@@ -48,15 +48,34 @@ class Screensaver(xbmcgui.WindowXMLDialog):
     def onInit(self):
         self.log('onInit')
         ensurePath()
-        subprocess.call('vcgencmd display_power 0', shell=True)
+        subprocess.Popen(['vcgencmd', 'display_power', '0'])
+        self.set_cpu_governor('powersave')
+        self.set_led(1, 'none', 1)
         self.exit_monitor = self.ExitMonitor(self.exit)
 
     def exit(self):
         self.abort_requested = True
         self.exit_monitor = None
-        subprocess.call('vcgencmd display_power 1', shell=True)
+        subprocess.Popen(['vcgencmd', 'display_power', '1'])
+        self.set_cpu_governor('ondemand')
+        self.set_led(1, 'input')
         self.log('exit')
         self.close()
+        
+    def set_cpu_governor(self, governor):
+        self.write('/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor', governor)
+
+    def set_led(self, index, trigger, value=-1):
+        self.write('/sys/class/leds/led%d/trigger' % index, trigger)
+        if value >= 0:
+            self.write('/sys/class/leds/led%d/brightness' % index, str(value))
+
+    def write(self, file, content):
+        fd = os.open(file, os.O_WRONLY)                                                                                    
+        os.write(fd, content)                                                                                                                                                
+        os.close(fd)                                                                                                                                                          
+        del fd                                                                                                                                                                
+        
 
     def log(self, msg):
         xbmc.log(u'pimon hdmi screensaver: %s' % msg)
